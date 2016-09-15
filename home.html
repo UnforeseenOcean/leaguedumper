@@ -1,0 +1,47 @@
+<html>
+  <head>
+    <title>Daemon.IO CP</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+    </style>
+  </head>
+  <body>
+    <div id='hw'>Waiting for dll to connect..<br></div>
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <script>
+		function ProcessSend(p) {
+			$('#hw').append('Send: '+JSON.stringify(p)+'<br>');
+		}
+		function ProcessRecv(p) {
+			$('#hw').append('Recv: '+JSON.stringify(p)+'<br>');
+		}
+		
+      var socket = io('http://localhost:3001');
+        function lolClick() {
+            socket.emit('init','xxt');
+            //send daemon cmd
+            //alert('xxt');
+        }
+      socket.on('disconnect', function(){
+        console.log('LOST IO CONNECTION!!!');
+		  window.location.reload(false); 
+      });
+      socket.on('linked', function(){
+        $('#hw').text('Linked!!!');
+      });
+      socket.on('recv', function(data){
+		  console.log('recv',data);
+		  ProcessRecv(data);
+      });
+      socket.on('send', function(data){
+		  console.log('send',data);
+		  ProcessSend(data);
+      });
+      socket.on('onEmit', function(data){
+		  console.log('onEmit',data);
+      });
+    </script>
+  </body>
+</html>
