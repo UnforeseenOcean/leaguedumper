@@ -1,0 +1,432 @@
+<html>
+  <head>
+    <title>League Dumper</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+    </style>
+    <script src="packetParser/parser.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.2/jstree.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.12/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+	  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
+	  <link rel="stylesheet" href="https://cdn.datatables.net/1.10.12/css/jquery.dataTables.min.css" />
+	  <style>
+		  #editor {
+			  position: absolute;
+    left: 320px;
+    top: 68px;
+			  width:980px;
+			  background-color: #d4d4d4;
+    border-radius: 25px;
+    border: 2px solid #73AD21;
+    padding: 8px; 
+		  }
+		  .hexedit {
+			  width: 80%;
+			  overflow-y:scroll;
+			  max-height: 100px;
+			  float: left;
+			  position: relative;
+    white-space: nowrap;
+    outline: none;
+    background: #fff;
+}
+		  .hexedit .offset {
+    padding: 0 10px;
+    background: #f7f7f7;
+    color: #777;
+    text-align: right;
+}
+		  .hexedit .hex {
+    padding: 0 10px;
+			  width:480px;
+}
+		  .hexedit .text {
+    padding: 0 20px 0 5px;
+    color: #222;
+}
+		  .hexedit .offset, .hexedit .hex, .hexedit .text {
+    display: inline-block;
+    vertical-align: top;
+}
+		  .hexedit span.cursor {
+    background: #6b9aba;
+    color: #fff !important;
+}
+		  .hexedit span.cursor.blink{box-shadow:inset 0 -4px 0 -2px rgba(0,0,0,0.5)}
+		.hexedit .hex>span {
+			padding: 1px 4px;
+			border-right: 1px solid transparent;
+		}
+		.hexedit span {
+			display: inline;
+			white-space: pre;
+		}
+		.hexedit .offset, .hexedit span {
+			font-family: 'Source Code Pro','HexEd.it Symbols','Courier New',Consolas,Menlo,'PT Mono','Liberation Mono',monospace;
+			font-size: 14.5px;
+			line-height: 20px;
+			cursor: default;
+			font-variant: normal;
+			text-transform: none;
+			-webkit-font-smoothing: antialiased;
+			-moz-osx-font-smoothing: grayscale;
+		}
+		  .hexedit.hex-grouping-8 .hex>span:nth-child(8n){
+			  border-right-color:#ccc
+		  }
+		  .hexedit.line-width-16 .hex>span:nth-child(16n){
+			  border-right-color:transparent
+		  }
+		  .hexedit.line-width-16 .hex>span:nth-child(16n)::after{
+			  content:"\A";
+			  margin:0 -5.3px 0 5px
+		  }
+		  .hexedit.line-width-16 .text>span:nth-child(16n)::after{
+			  content:"\A"
+		  }
+		  #pListDiv {
+			  float: left;
+			  position: relative;
+			  width: 80%;
+			  height: 280px;
+    padding: 4px; 
+		  }
+		  #pStruct {
+			  position: relative;
+			  float: right;
+			  width: 20%;
+    padding: 4px; 
+		  }
+		  #pProp {
+			  width: 20%;
+			  position: relative;
+			  float: right;
+			  height: 180px;
+    padding: 4px; 
+		  }
+		  .clear {
+    clear: both;
+}
+	  </style>
+  </head>
+  <body>
+	  <div>
+		  <button onClick="genSave()">Save Headers</button> 
+		  <button onClick="genDataSave()">Save Data</button> 
+		  <button>Load</button>
+	  </div>
+    <div id='hw'>Waiting for dll to connect..<br></div>
+	  <div id="editor" tabindex="0">
+	  <div id="pListDiv">
+		  <table id="pList">
+		</table>
+	  </div>
+	  <div id="pStruct">
+		  Code struct viewer here..
+	  </div>
+		  <div class="clear"></div>
+		  <div class="hexedit line-width-16 hex-grouping-8">
+			  <div class="offset notranslate"></div>
+			  <div class="hex notranslate"></div>
+			  <div class="text notranslate"></div>
+		  </div>
+	  <div id="pProp">
+		  <input type="checkbox" id="propHex" /> Hex<br>
+		  <table>
+		  <thead>
+		  <tr>
+			  <td>Name</td><td>Value</td>
+		  </tr>
+			  </thead>
+		  <tbody>
+		  <tr>
+		  	<td>Byte</td><td id="propByte">1</td>
+		  </tr>
+		  <tr>
+		  	<td>Word</td><td id="propWord"></td>
+		  </tr>
+		  <tr>
+		  	<td>Int</td><td id="propDword"></td>
+		  </tr>
+		  <tr>
+		  	<td>Float</td><td id="propFloat"></td>
+		  </tr>
+		  <tr>
+		  	<td>String</td><td id="propString"></td>
+		  </tr>
+			  </tbody>
+		  </table>
+	  </div>
+	  </div>
+	  <script>
+		  String.prototype.hex2bin = function () {
+  var i = 0, l = this.length - 1, bytes = []
+  for (i; i < l; i += 2) {
+    bytes.push(parseInt(this.substr(i, 2), 16))
+  }
+  return String.fromCharCode.apply(String, bytes)   
+}
+
+String.prototype.bin2hex = function (){
+  var i = 0, l = this.length, chr, hex = ''
+  for (i; i < l; ++i)
+  {
+    chr = this.charCodeAt(i).toString(16)
+    hex += chr.length < 2 ? '0' + chr : chr
+  }
+  return hex
+}
+		  function str2ab(str) {
+			  var buf = new ArrayBuffer(str.length); // 2 bytes for each char
+			  var bufView = new Uint8Array(buf);
+			  for (var i=0, strLen=str.length; i<strLen; i++) {
+				bufView[i] = str.charCodeAt(i);
+			  }
+			  return buf;
+			}
+		  function GetEditorData() {
+			return str2ab($('#editor').attr('data').hex2bin());
+		  }
+function genSave() {
+	//log all headers
+	var cfg = JSON.stringify(aPacketHeaders);
+	window.open('save/'+cfg);
+}
+function genDataSave() {
+	//log all data
+	var toSave = [];
+	pTable.column(4).nodes().each( function (cell, i) {
+		var obj = {};
+		obj.data = $(cell).parent().attr('data');
+		obj.recv = $(cell).parent().attr('isrecv');
+		obj.time = $(cell).parent().attr('time');
+		toSave.push(obj);				  
+		});
+	window.open('save/'+JSON.stringify(toSave));
+}
+var aPacketHeaders = {};
+var aIgnoreHeaders = {};
+		  aIgnoreHeaders[0xA8] = true;
+		  aIgnoreHeaders[0xAE] = true;
+		  
+		  function SetStruct(header) {
+			  //if treeview empty, add unknown
+			  $('#pStruct').html('');
+			  var data = {'core': {
+				  'data' : [
+					  
+				  ],
+				  "types" : {
+					  "default" : {
+						"icon" : "glyphicon glyphicon-flash"
+					  },
+					  "demo" : {
+						"icon" : "glyphicon glyphicon-ok"
+					  }
+					},
+				"plugins" : [ "types" ]
+			  }};
+			  var bParsed = ParsePacket(header,GetEditorData(),data.core.data);
+				  var nDiv = $("<div>");
+				  nDiv.jstree(data).on('changed.jstree', function (e, data) { if(data.selected.length) {
+					  var n = data.instance.get_node(data.selected[0]);
+					  SetCursor(n.a_attr.dataOffset,n.a_attr.size);
+				  }});
+				  $('#pStruct').append(nDiv);
+		  }
+		  
+		  function SetProp(index) {
+			  var data = $('#editor').attr('data').substr(index*2);
+			  var buffer = GetEditorData();
+			  var dataView = new DataView(buffer);
+			  var nByte,nWord = 0;
+			  
+			  var bPropHex = $("#propHex").prop('checked');
+			  try {
+			  		$('#propByte').text(dataView.getInt8(index));
+			  		$('#propWord').text(dataView.getInt16(index,true));
+			  		$('#propDword').text(dataView.getInt32(index,true));
+			  		$('#propFloat').text(dataView.getFloat32(index,true));
+				  var strVal = data.hex2bin();
+				  	var nulTerm = strVal.indexOf('\0');
+			  		$('#propString').text(strVal.substr(0,nulTerm == -1 ? strVal.length : nulTerm));
+			  } catch(err) {
+				  
+			  }
+		  }
+		  function SetCursor(index,nSize) {
+			  index = parseInt(index);
+			  $('#editor .hex .cursor').removeClass('cursor');
+			  $('#editor .text .cursor').removeClass('cursor');
+			  if(nSize == 0) {
+				  nSize = $('#editor .hex').children().length;
+			  }
+			  //set class cursor
+			  for(var i = 0; i < nSize;i++) {
+			  	$('#editor .hex').children().eq(index+i).addClass('cursor');
+			  	$('#editor .text').children().eq(index+i).addClass('cursor');
+			  }
+			  //update value viewer
+			  SetProp(index);
+		  }
+		  function isASCII(str) {
+    return /^[\x00-\x7F]*$/.test(str);
+}
+		function SetHexData(_bContent) {
+			var bContent = _bContent.hex2bin();
+			
+			$('#editor').attr('data',_bContent);
+			var offsetHtml = '';
+			var hexHtml = '';
+			var textHtml = '';
+			for(var i = 0; i < bContent.length;i++) {
+				if(i%16 == 0) {
+					var offset = ("0000000" + i.toString(16)).substr(-8);
+					offsetHtml += '<div data-offset="'+i+'">'+offset+'</div>';
+				}
+				var bByte = ("00"+bContent.charCodeAt(i).toString(16)).substr(-2).toUpperCase(); //bContent[i]
+				hexHtml += '<span data-offset="'+i+'" class>'+bByte+'</span>';
+				textHtml += '<span data-offset="'+i+'">'+(bContent[i].charCodeAt(0) > 31 && bContent[i].charCodeAt(0) < 127 ? bContent[i] : '.')+'</span>';
+			}
+			$('#editor .offset').html(offsetHtml);
+			$('#editor .hex').html(hexHtml);
+			$('#editor .text').html(textHtml);
+			//select first..
+			SetCursor(0,1);
+			
+			function setCursorClick() {
+				var offset = $(this).attr('data-offset');
+				SetCursor(offset,1);
+			}
+			$('#editor .offset div').click(setCursorClick);
+			$('#editor .hex span').click(setCursorClick);
+			$('#editor .text span').click(setCursorClick);
+		}
+		  function AddPacket(header,data,isRecv,time) {
+			  var nTime = time || Date.now()-tStartLog
+			  var nName = '<label onClick="askRename('+header+')">'+(aPacketHeaders[header] ||'UNKNOWN')+'</label>';
+			  var nHeader = "0x" + header.toString(16).toUpperCase();
+			  if(header < 0x10) {
+				  nHeader = "0x0" + header.toString(16).toUpperCase();
+			  }
+			  var r = pTable.row.add( [
+				isRecv ? '<--' : '-->',
+				nTime,
+				data.length/2,
+				  nHeader,
+				nName
+			] ).draw( false ).node(); //store data?
+			  $(r).attr('data',data);
+			  $(r).attr('header',header);
+			  $(r).attr('time',nTime);
+			  $(r).attr('isRecv',isRecv?'true':'false');
+			  //scroll to last or not?
+			  if(!$("#noScroll").prop('checked')) {
+			  	//$(".dataTables_scrollBody").animate({ scrollTop: $(".dataTables_scrollBody")[0].scrollHeight}, 100);
+				  $(".dataTables_scrollBody").scrollTop($(".dataTables_scrollBody")[0].scrollHeight);
+			  }
+			  $('#editor #pList tr').off("click");
+			$('#editor #pList tr').click(function() {
+				var data = $(this).attr('data');
+				var header = $(this).attr('header');
+				//load struct script
+				//load to hex view
+				SetHexData(data);
+				SetStruct(header);
+			});
+		  }
+		  function manualTest() {
+			  
+			AddPacket(7,'BIG TESTOOCODEEWEEWWEEERWRFERWREFAFE'.bin2hex());
+			AddPacket(22,'42424242420001',true);
+			AddPacket(2,'BIG TESTOOCODE'.bin2hex());
+			AddPacket(4,'4242420042420001',true);
+			AddPacket(2,'BIG TESTOOCODE'.bin2hex());
+			AddPacket(4,'42424242420001',true);
+			AddPacket(4,'42424242420001');
+			AddPacket(4,'42424242420001');
+			AddPacket(4,'42424242420001');
+			SetHexData('test'.bin2hex());
+		  }
+		  function askRename(header) {
+			  var headerName = prompt("Please enter header name", aPacketHeaders[header] ||'UNKNOWN');
+				  if(headerName != null) {
+				  aPacketHeaders[header] = headerName;
+					  pTable.column(4).nodes().each( function (cell, i) {
+						  if($(cell).parent().attr('header') == header) {
+							cell.innerHTML = '<label onClick="askRename('+header+')">'+headerName+'</label>';
+						  }
+						} );
+					//save header list
+			  }
+		  }
+		$(function() {
+			$.getJSON("cfg", function(json) {
+				aPacketHeaders = json;
+				//manualTest();
+			});
+			tStartLog = Date.now();
+			//load packet names
+			
+			pTable = $('#pList').DataTable( {
+        "scrollY":        "200px",
+        "scrollCollapse": true,
+        "paging":         false,
+				"ordering": false,
+				"info": false,
+				columns: [
+					{ title: "Direction" },
+					{ title: "Timestamp" },
+					{ title: "Lenght" },
+					{ title: "Header" },
+					{ title: "Name" }
+				]
+			} );
+			$('#pList_filter').append('<div><input type="checkbox" id="noScroll"/>No Scroll</div>');
+		  console.log('ok');
+		});
+		  
+		  
+		function ProcessSend(p) {
+			var nHeader = parseInt(p.data.substr(0,2),16);
+			if(aIgnoreHeaders[nHeader]) {
+				return;
+			}
+			AddPacket(nHeader,p.data,false,p.time);
+			//$('#hw').append('Send: '+JSON.stringify(p)+'<br>');
+		}
+		function ProcessRecv(p) {
+			var nHeader = parseInt(p.data.substr(0,2),16);
+			if(aIgnoreHeaders[nHeader]) {
+				return;
+			}
+			AddPacket(nHeader,p.data,true,p.time);
+			//$('#hw').append('Recv: '+JSON.stringify(p)+'<br>');
+		}
+		
+      var socket = io('http://localhost:3001');
+      socket.on('disconnect', function(){
+        console.log('LOST IO CONNECTION!!!');
+		  window.location.reload(false); 
+      });
+      socket.on('linked', function(){
+        $('#hw').text('Linked!!!');
+      });
+      socket.on('recv', function(data){
+		  console.log('recv',data);
+		  ProcessRecv(data);
+      });
+      socket.on('send', function(data){
+		  console.log('send',data);
+		  ProcessSend(data);
+      });
+      socket.on('onEmit', function(data){
+		  console.log('onEmit',data);
+			$('#hw').append('onEmit: '+JSON.stringify(data)+'<br>');
+      });
+	  </script>
+  </body>
+</html>

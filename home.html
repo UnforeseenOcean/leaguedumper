@@ -8,14 +8,14 @@
   </head>
   <body>
     <div id='hw'>Waiting for dll to connect..<br></div>
-    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
     <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
     <script>
 		function ProcessSend(p) {
-			$('#hw').append('Send: '+JSON.stringify(p)+'<br>');
+			//$('#hw').append('Send: '+JSON.stringify(p)+'<br>');
 		}
 		function ProcessRecv(p) {
-			$('#hw').append('Recv: '+JSON.stringify(p)+'<br>');
+			//$('#hw').append('Recv: '+JSON.stringify(p)+'<br>');
 		}
 		
       var socket = io('http://localhost:3001');
@@ -41,6 +41,7 @@
       });
       socket.on('onEmit', function(data){
 		  console.log('onEmit',data);
+			$('#hw').append('onEmit: '+JSON.stringify(data)+'<br>');
       });
     </script>
   </body>
