@@ -12,111 +12,13 @@
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
 	  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
 	  <link rel="stylesheet" href="https://cdn.datatables.net/1.10.12/css/jquery.dataTables.min.css" />
-	  <style>
-		  #editor {
-			  position: absolute;
-    left: 320px;
-    top: 68px;
-			  width:980px;
-			  background-color: #d4d4d4;
-    border-radius: 25px;
-    border: 2px solid #73AD21;
-    padding: 8px; 
-		  }
-		  .hexedit {
-			  width: 80%;
-			  overflow-y:scroll;
-			  max-height: 100px;
-			  float: left;
-			  position: relative;
-    white-space: nowrap;
-    outline: none;
-    background: #fff;
-}
-		  .hexedit .offset {
-    padding: 0 10px;
-    background: #f7f7f7;
-    color: #777;
-    text-align: right;
-}
-		  .hexedit .hex {
-    padding: 0 10px;
-			  width:480px;
-}
-		  .hexedit .text {
-    padding: 0 20px 0 5px;
-    color: #222;
-}
-		  .hexedit .offset, .hexedit .hex, .hexedit .text {
-    display: inline-block;
-    vertical-align: top;
-}
-		  .hexedit span.cursor {
-    background: #6b9aba;
-    color: #fff !important;
-}
-		  .hexedit span.cursor.blink{box-shadow:inset 0 -4px 0 -2px rgba(0,0,0,0.5)}
-		.hexedit .hex>span {
-			padding: 1px 4px;
-			border-right: 1px solid transparent;
-		}
-		.hexedit span {
-			display: inline;
-			white-space: pre;
-		}
-		.hexedit .offset, .hexedit span {
-			font-family: 'Source Code Pro','HexEd.it Symbols','Courier New',Consolas,Menlo,'PT Mono','Liberation Mono',monospace;
-			font-size: 14.5px;
-			line-height: 20px;
-			cursor: default;
-			font-variant: normal;
-			text-transform: none;
-			-webkit-font-smoothing: antialiased;
-			-moz-osx-font-smoothing: grayscale;
-		}
-		  .hexedit.hex-grouping-8 .hex>span:nth-child(8n){
-			  border-right-color:#ccc
-		  }
-		  .hexedit.line-width-16 .hex>span:nth-child(16n){
-			  border-right-color:transparent
-		  }
-		  .hexedit.line-width-16 .hex>span:nth-child(16n)::after{
-			  content:"\A";
-			  margin:0 -5.3px 0 5px
-		  }
-		  .hexedit.line-width-16 .text>span:nth-child(16n)::after{
-			  content:"\A"
-		  }
-		  #pListDiv {
-			  float: left;
-			  position: relative;
-			  width: 80%;
-			  height: 280px;
-    padding: 4px; 
-		  }
-		  #pStruct {
-			  position: relative;
-			  float: right;
-			  width: 20%;
-    padding: 4px; 
-		  }
-		  #pProp {
-			  width: 20%;
-			  position: relative;
-			  float: right;
-			  height: 180px;
-    padding: 4px; 
-		  }
-		  .clear {
-    clear: both;
-}
-	  </style>
+	  <link rel="stylesheet" href="style.css" />
   </head>
   <body>
 	  <div>
 		  <button onClick="genSave()">Save Headers</button> 
 		  <button onClick="genDataSave()">Save Data</button> 
-		  <button>Load</button>
+		  <button onClick="askParse()">Load Replay</button>
 	  </div>
     <div id='hw'>Waiting for dll to connect..<br></div>
 	  <div id="editor" tabindex="0">
@@ -208,9 +110,6 @@ function genDataSave() {
 	window.open('save/'+JSON.stringify(toSave));
 }
 var aPacketHeaders = {};
-var aIgnoreHeaders = {};
-		  aIgnoreHeaders[0xA8] = true;
-		  aIgnoreHeaders[0xAE] = true;
 		  
 		  function SetStruct(header) {
 			  //if treeview empty, add unknown
@@ -392,7 +291,7 @@ var aIgnoreHeaders = {};
 		  
 		function ProcessSend(p) {
 			var nHeader = parseInt(p.data.substr(0,2),16);
-			if(aIgnoreHeaders[nHeader]) {
+			if(aPacketHeaders.ignore && aPacketHeaders.ignore[nHeader]) {
 				return;
 			}
 			AddPacket(nHeader,p.data,false,p.time);
@@ -400,13 +299,18 @@ var aIgnoreHeaders = {};
 		}
 		function ProcessRecv(p) {
 			var nHeader = parseInt(p.data.substr(0,2),16);
-			if(aIgnoreHeaders[nHeader]) {
+			if(aPacketHeaders.ignore && aPacketHeaders.ignore[nHeader]) {
 				return;
 			}
 			AddPacket(nHeader,p.data,true,p.time);
 			//$('#hw').append('Recv: '+JSON.stringify(p)+'<br>');
 		}
-		
+		var bParsed = false;
+		  function askParse() {
+			if(!bParsed) {
+				socket.emit('parseReplay');
+			}
+		  }
       var socket = io('http://localhost:3001');
       socket.on('disconnect', function(){
         console.log('LOST IO CONNECTION!!!');
@@ -423,9 +327,16 @@ var aIgnoreHeaders = {};
 		  console.log('send',data);
 		  ProcessSend(data);
       });
-      socket.on('onEmit', function(data){
-		  console.log('onEmit',data);
-			$('#hw').append('onEmit: '+JSON.stringify(data)+'<br>');
+      socket.on('replayParsed', function(){
+		bParsed = true;
+        $('#hw').text('Finished parsing replay!!!');
+		  console.log('finished parsing replay');
+	  });
+      socket.on('replayPacket', function(data){
+			if(aPacketHeaders.ignore && aPacketHeaders.ignore[data.header]) {
+				return;
+			}
+		  AddPacket(data.header,data.data,true,data.time);
       });
 	  </script>
   </body>

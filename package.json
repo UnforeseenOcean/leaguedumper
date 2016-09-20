@@ -9,8 +9,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "binary-file": "^0.2.1",
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
+    "ffi": "^2.1.0",
+    "mcrypt": "^0.1.11",
+    "smart-buffer": "^1.0.11",
     "socket.io": "^1.4.8"
   }
 }
