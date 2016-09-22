@@ -18,6 +18,7 @@
 	  <div>
 		  <button onClick="genSave()">Save Headers</button> 
 		  <button onClick="genDataSave()">Save Data</button> 
+		  <button onClick="askDataParse()">Load Data</button>
 		  <button onClick="askParse()">Load Replay</button>
 	  </div>
     <div id='hw'>Waiting for dll to connect..<br></div>
@@ -109,6 +110,19 @@ function genDataSave() {
 		});
 	window.open('save/'+JSON.stringify(toSave));
 }
+		var bParsed = false;
+		  function askParse() {
+			if(!bParsed) {
+				socket.emit('parseReplay');
+				bParsed = true;
+			}
+		  }
+		  function askDataParse() {
+			if(!bParsed) {
+				socket.emit('parseData');
+				bParsed = true;
+			}
+		  }
 var aPacketHeaders = {};
 		  
 		  function SetStruct(header) {
@@ -305,12 +319,6 @@ var aPacketHeaders = {};
 			AddPacket(nHeader,p.data,true,p.time);
 			//$('#hw').append('Recv: '+JSON.stringify(p)+'<br>');
 		}
-		var bParsed = false;
-		  function askParse() {
-			if(!bParsed) {
-				socket.emit('parseReplay');
-			}
-		  }
       var socket = io('http://localhost:3001');
       socket.on('disconnect', function(){
         console.log('LOST IO CONNECTION!!!');

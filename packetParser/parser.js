@@ -133,6 +133,11 @@ function ParsePacket(header,buffer,aData) {
 		AddFloat(dataView,aData,'y');
 		AddFloat(dataView,aData,'z');
 		AddFloat(dataView,aData,'timeToTurn');
+	} else if(header == 0x97) { //PKT_S2C_UpdateModel
+		AddDword(dataView,aData,'id');
+		AddByte(dataView,aData,'bOk');
+		AddDword(dataView,aData,'-1');
+		AddField(dataView,aData,'model',32);
 	} else if(header == 0x9A) {
 		AddByte(dataView,aData,'spellSlotType');
 		AddByte(dataView,aData,'spellSlot');

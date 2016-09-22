@@ -253,6 +253,16 @@ bio.on("connection", function(socket) { //BROWSER IO
 		});
     	console.log('parsing replay..');
     });
+    socket.on('parseData', function() {
+		var data = require('./data.json');
+		
+		for(var i = 1; i < data.length;i++) {
+			var p = data[i];
+			bio.emit(p.recv == 'true' ? 'recv' : 'send',{data:p.data,time:p.time});
+		}
+    	console.log('parsing data..',data.length);
+			bio.emit('replayParsed');
+	});
 });
 dio.on("connection", function(socket) { //DAEMON IO
       console.log('daemon connected');
@@ -268,10 +278,10 @@ dio.on("connection", function(socket) { //DAEMON IO
 		 bio.emit(data.msg,data);
     });
      socket.on('recv', function(msg) {
-         bio.emit('recv',{data:msg.data.toString('hex'),size:msg.data.length,time:msg.time});
+         bio.emit('recv',{data:msg.data.toString('hex'),time:msg.time});
     });
      socket.on('send', function(msg) {
-         bio.emit('send',{data:msg.data.toString('hex'),size:msg.data.length,time:msg.time});
+         bio.emit('send',{data:msg.data.toString('hex'),time:msg.time});
     });
 });
 
