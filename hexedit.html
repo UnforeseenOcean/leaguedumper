@@ -304,7 +304,7 @@ var aPacketHeaders = {};
 		  
 		  
 		function ProcessSend(p) {
-			var nHeader = parseInt(p.data.substr(0,2),16);
+			var nHeader = parseInt(p.data.substr(2,2)+p.data.substr(0,2),16);
 			if(aPacketHeaders.ignore && aPacketHeaders.ignore[nHeader]) {
 				return;
 			}
@@ -312,7 +312,7 @@ var aPacketHeaders = {};
 			//$('#hw').append('Send: '+JSON.stringify(p)+'<br>');
 		}
 		function ProcessRecv(p) {
-			var nHeader = parseInt(p.data.substr(0,2),16);
+			var nHeader = parseInt(p.data.substr(2,2)+p.data.substr(0,2),16);
 			if(aPacketHeaders.ignore && aPacketHeaders.ignore[nHeader]) {
 				return;
 			}
@@ -328,7 +328,7 @@ var aPacketHeaders = {};
         $('#hw').text('Linked!!!');
       });
       socket.on('recv', function(data){
-		  console.log('recv',data);
+		  //console.log('recv',data);
 		  ProcessRecv(data);
       });
       socket.on('send', function(data){
